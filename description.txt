@@ -1,0 +1,1 @@
+Plugin installer for rah-prefixed plugins.
