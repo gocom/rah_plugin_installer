@@ -1,15 +1,17 @@
-<?php	##################
-	#
-	#	rah_plugin_installer-plugin for Textpattern
-	#	version 0.4
-	#	by Jukka Svahn
-	#	http://rahforum.biz
-	#
-	#	Copyright (C) 2011 Jukka Svahn <http://rahforum.biz>
-	#	Licensed under GNU Genral Public License version 2
-	#	http://www.gnu.org/licenses/gpl-2.0.html
-	#
-	##################
+<?php
+
+/**
+ * Rah_plugin_installer plugin for Textpattern CMS
+ *
+ * @author Jukka Svahn
+ * @date 2008-
+ * @license GNU GPLv2
+ * @link http://rahforum.biz/plugins/rah_plugin_installer
+ *
+ * Copyright (C) 2012 Jukka Svahn <http://rahforum.biz>
+ * Licensed under GNU Genral Public License version 2
+ * http://www.gnu.org/licenses/gpl-2.0.html
+ */
 
 	if(@txpinterface == 'admin') {
 		add_privs('rah_plugin_installer','1');
@@ -22,17 +24,12 @@
 	}
 
 /**
-	Installer script
-	@param $event string Admin-side event.
-	@param $step string Admin-side, plugin-lifecycle step.
-*/
+ * Installer script
+ * @param string $event Admin-side event.
+ * @param string $step Admin-side, plugin-lifecycle step.
+ */
 
 	function rah_plugin_installer_install($event='', $step='') {
-		
-		/*
-			Uninstall if uninstalling the
-			plugin
-		*/
 		
 		if($step == 'deleted') {
 			
@@ -139,8 +136,8 @@
 	}
 
 /**
-	Delivers the panes
-*/
+ * Delivers the panes
+ */
 
 	function rah_plugin_installer() {
 		require_privs('rah_plugin_installer');
@@ -164,12 +161,12 @@
 	}
 
 /**
-	The main pane; the plugin listing
-	@param $message string Activity message.
-	@param $check bool Check for updates.
-*/
+ * The main pane; the plugin listing
+ * @param string $message Activity message.
+ * @param bool $check Check for updates.
+ */
 
-	function rah_plugin_installer_list($message='',$check=false) {
+	function rah_plugin_installer_list($message='', $check=false) {
 		
 		global $event;
 		
@@ -248,8 +245,9 @@
 	}
 
 /**
-	Get list of installed plugins
-*/
+ * Get list of installed plugins
+ * @return array
+ */
 
 	function rah_plugin_installer_installed() {
 
@@ -275,10 +273,10 @@
 	}
 
 /**
-	Checks for updates
-	@param $manual bool If user-launched update check, or auto.
-	@return string Returned message as a language string.
-*/
+ * Checks for updates
+ * @param bool $manual If user-launched update check, or auto.
+ * @return string Returned message as a language string.
+ */
 
 	function rah_plugin_installer_check($manual=false) {
 		
@@ -336,18 +334,18 @@
 	}
 
 /**
-	Fire manual listing refresh
-*/
+ * Fire manual listing refresh
+ */
 
 	function rah_plugin_installer_update() {
 		rah_plugin_installer_list('',true);
 	}
 
 /**
-	Parses update file
-	@param $file string File to parse.
-	@return array
-*/
+ * Parses update file
+ * @param string $file File to parse.
+ * @return array
+ */
 
 	function rah_plugin_installer_parser($file) {
 
@@ -387,10 +385,10 @@
 	}
 	
 /**
-	Imports update file to the database
-	@param $inc array Definitions to import.
-	@return Nothing.
-*/
+ * Imports update file to the database
+ * @param array $inc Definitions to import.
+ * @return Nothing.
+ */
 
 	function rah_plugin_installer_import($inc) {
 		
@@ -450,8 +448,8 @@
 	}
 
 /**
-	Download the plugin code and run Textpattern's plugin installer
-*/
+ * Download the plugin code and run Textpattern's plugin installer
+ */
 
 	function rah_plugin_installer_download() {
 		
@@ -506,11 +504,11 @@
 	}
 
 /**
-	Downloads remote file
-	@param $url string URL to download.
-	@param $timeout int Connection timeout in seconds.
-	@return string Contents of the file. False on failure.
-*/
+ * Downloads remote file
+ * @param string $url URL to download.
+ * @param int $timeout Connection timeout in seconds.
+ * @return string Contents of the file. False on failure.
+ */
 
 	function rah_plugin_installer_fget($url, $timeout=10) {
 		
@@ -550,8 +548,8 @@
 	}
 
 /**
-	Redirect to the admin-side interface
-*/
+ * Redirect to the admin-side interface
+ */
 
 	function rah_plugin_installer_options() {
 		header('Location: ?event=rah_plugin_installer');
@@ -562,8 +560,8 @@
 	}
 
 /**
-	Adds styles to the <head>
-*/
+ * Adds styles to the <head>
+ */
 
 	function rah_plugin_installer_head() {
 		global $event;
