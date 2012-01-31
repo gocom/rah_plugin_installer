@@ -1,6 +1,6 @@
 #@admin
 #Default language, en-us, en-gb
-rah_plugin_installer => Plugin installer
+rah_plugin_installer => Plugin Installer
 rah_plugin_installer_check_for_updates => Check for updates
 rah_plugin_installer_name => Name
 rah_plugin_installer_version => Version
