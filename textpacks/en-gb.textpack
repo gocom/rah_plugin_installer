@@ -1,0 +1,19 @@
+#@admin
+#Default language, en-us, en-gb
+rah_plugin_installer => Plugin installer
+rah_plugin_installer_check_for_updates => Check for updates
+rah_plugin_installer_name => Name
+rah_plugin_installer_version => Version
+rah_plugin_installer_description => Description
+rah_plugin_installer_installed_version => Installed version
+rah_plugin_installer_no_plugins => No plugin update definitions downloaded yet.
+rah_plugin_installer_already_up_to_date => Plugin update definitions are up-to-date.
+rah_plugin_installer_already_installed => Plugin is already installed.
+rah_plugin_installer_incorrect_selection => Incorrect selection.
+rah_plugin_installer_open_ports_or_install_curl => Can not connect to server due to unsupported server configuration. Please either install cURL or set allow_url_fopen directive in PHP configuration file to true.
+rah_plugin_installer_downloading_plugin_failed => Downloading plugin failed
+rah_plugin_installer_in_plugin_cache => Initialized from plugin cache
+rah_plugin_installer_update => Update
+rah_plugin_installer_download => Download
+rah_plugin_installer_install => Install
+rah_plugin_installer_definition_updates_checked => New plugin update definitions downloaded successfully.
