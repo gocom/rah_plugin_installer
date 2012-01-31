@@ -1,7 +1,7 @@
 <?php	##################
 	#
 	#	rah_plugin_installer-plugin for Textpattern
-	#	version 0.3
+	#	version 0.4
 	#	by Jukka Svahn
 	#	http://rahforum.biz
 	#
@@ -81,7 +81,7 @@
 				$textarray[$string] = $translation;
 		}
 				
-		$version = '0.3';
+		$version = '0.4';
 		
 		$current = 
 			isset($prefs['rah_plugin_installer_version']) ?
@@ -220,7 +220,7 @@
 			 	
 			 	if(isset($installed[$a['name']])) {
 			 		$ins = $installed[ $a['name']];
-			 		$action = $ins == $a['version'] ? '&#160;' : 'update';
+			 		$action = $ins == $a['version'] ? '' : 'update';
 			 	}
 			
 				$out[] = 
@@ -229,7 +229,7 @@
 					'					<td>'.htmlspecialchars($a['version']).'</td>'.n.
 					'					<td>'.htmlspecialchars($a['description']).'</td>'.n.
 					'					<td>'.$ins.'</td>'.n.
-					'					<td><a href="?event='.$event.'&amp;step=download&amp;name='.$a['name'].'&amp;_txp_token='.form_token().'">'.gTxt('rah_plugin_installer_'.$action).'</a></td>'.n.
+					'					<td>'.($action ? '<a href="?event='.$event.'&amp;step=download&amp;name='.$a['name'].'&amp;_txp_token='.form_token().'">'.gTxt('rah_plugin_installer_'.$action).'</a>' : '&#160;').'</td>'.n.
 					'				</tr>'.n;
 				}
 		} else

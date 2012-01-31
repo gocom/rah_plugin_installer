@@ -2,8 +2,8 @@ h1. rah_plugin_installer
 
 p. Install and update rah-plugins directly from your "Textpattern":http://www.textpattern.com installation. Click and install, ready to go.
 
-* Version: 0.3
-* Updated: 2011/07/19 12:05 PM UTC
+* Version: 0.4
+* Updated: 2011/07/19 12:20 PM UTC
 
 h3. Table of Contents
 
@@ -36,6 +36,10 @@ p. The general behavior stands: paste plugin code to the plugin installer textar
 p. You can download and install rah-plugins from Textpattern > Extensions > Plugin Installer.
 
 h3(#changelog). Changelog
+
+p. *Version 0.4*
+
+* Fixed small bug that appeared with the action links.
 
 p. *Version 0.3*
 
