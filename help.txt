@@ -2,8 +2,8 @@ h1. rah_plugin_installer
 
 p. Install and update rah-plugins directly from your "Textpattern":http://www.textpattern.com installation. Click and install, ready to go.
 
-* Version: 0.2
-* Updated: 2010/06/01 02:30 AM UTC
+* Version: 0.3
+* Updated: 2011/07/19 12:05 PM UTC
 
 h3. Table of Contents
 
@@ -21,10 +21,11 @@ h3(#list-of-features). List of features
 
 h3(#requirements). Requirements
 
-* Textpattern 4.x.x+
+Rah_plugin_installer's minimum requirement:
+
+* Textpattern 4.4.1+
 * PHP 4.3.0+
-** file_get_contents
-** allow_url_fopen set true
+** "cURL":http://php.net/manual/en/book.curl.php library or "allow_url_fopen":http://php.net/manual/en/filesystem.configuration.php set true
 ** Internet connection for communications with the server
 * Optional: Zlib library.
 
@@ -35,6 +36,19 @@ p. The general behavior stands: paste plugin code to the plugin installer textar
 p. You can download and install rah-plugins from Textpattern > Extensions > Plugin Installer.
 
 h3(#changelog). Changelog
+
+p. *Version 0.3*
+
+* Compatibility with Textpattern v4.4.1.
+* Added: Support for cURL library and prefers it if installed. If not installed, uses regular file functions as fallback.
+* Added: Localization and language string support. TextPacks can be used to translate the admin interface.
+* Added: Build in uninstaller.
+* Changed: Moved the preference strings to Textpattern's core txp_prefs table.
+* Changed: HTML5 ready markup, added @<tbody>@ and @<thead>@ elements to the HTML table and removed inline styles.
+* Improved: New update file format. The syntax is similar to Textpattern's language files.
+* Improved: Additional validation when downloading update files.
+* Improved: Now update files are parsed and inserted to database as individual rows instead of cached and parsed on every page request. Allows future expansions.
+* Now requires Textpattern v4.4.1 or newer.
 
 p. *Version 0.2*
 

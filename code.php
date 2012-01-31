@@ -1,421 +1,493 @@
 <?php	##################
 	#
 	#	rah_plugin_installer-plugin for Textpattern
-	#	version 0.2
+	#	version 0.3
 	#	by Jukka Svahn
 	#	http://rahforum.biz
 	#
-	###################
+	#	Copyright (C) 2011 Jukka Svahn <http://rahforum.biz>
+	#	Licensed under GNU Genral Public License version 2
+	#	http://www.gnu.org/licenses/gpl-2.0.html
+	#
+	##################
 
-	if (@txpinterface == 'admin') {
+	if(@txpinterface == 'admin') {
 		add_privs('rah_plugin_installer','1');
-		register_tab('extensions', 'rah_plugin_installer', 'Plugin Installer');
-		register_callback('rah_plugin_installer', 'rah_plugin_installer');
+		add_privs('plugin_prefs.rah_plugin_installer','1,2');
+		register_tab('extensions','rah_plugin_installer',gTxt('rah_plugin_installer') == 'rah_plugin_installer' ? 'Plugin Installer' : gTxt('rah_plugin_installer'));
+		register_callback('rah_plugin_installer_head','admin_side','head_end');
+		register_callback('rah_plugin_installer','rah_plugin_installer');
+		register_callback('rah_plugin_installer_options','plugin_prefs.rah_plugin_installer');
+		register_callback('rah_plugin_installer_install','plugin_lifecycle.rah_plugin_installer');
 	}
+
+/**
+	Installer script
+	@param $event string Admin-side event.
+	@param $step string Admin-side, plugin-lifecycle step.
+*/
+
+	function rah_plugin_installer_install($event='', $step='') {
+		
+		/*
+			Uninstall if uninstalling the
+			plugin
+		*/
+		
+		if($step == 'deleted') {
+			
+			@safe_query(
+				'DROP TABLE IF EXISTS '.safe_pfx('rah_plugin_installer_def')
+			);
+			
+			safe_delete(
+				'txp_prefs',
+				"name like 'rah_plugin_installer_%'"
+			);
+			
+			return;
+		}
+		
+		global $prefs, $textarray;
+		
+		/*
+			Make sure language strings are set
+		*/
+		
+		foreach(
+			array(
+				'' => 'Plugin installer',
+				'check_for_updates' => 'Check for updates',
+				'name' => 'Name',
+				'version' => 'Version',
+				'description' => 'Description',
+				'installed_version' => 'Installed version',
+				'no_plugins' => 'No plugin update definitions downloaded yet.',
+				'already_up_to_date' => 'Plugin update definitions are up-to-date.',
+				'already_installed' => 'Plugin is already installed.',
+				'incorrect_selection' => 'Incorrect selection.',
+				'open_ports_or_install_curl' => 'Can not connect to server due to unsupported server configuration. Please either install cURL or set allow_url_fopen directive in PHP configuration file to true.',
+				'downloading_plugin_failed' => 'Downloading plugin failed',
+				'in_plugin_cache' => 'Initialized from plugin cache',
+				'update' => 'Update',
+				'download' => 'Download',
+				'install' => 'Install',
+				'definition_updates_checked' => 'New plugin update definitions downloaded successfully.'
+			) as $string => $translation
+		) {
+			$string = 'rah_plugin_installer' . ($string ? '_' . $string : '');
+			
+			if(!isset($textarray[$string]))
+				$textarray[$string] = $translation;
+		}
+				
+		$version = '0.3';
+		
+		$current = 
+			isset($prefs['rah_plugin_installer_version']) ?
+			$prefs['rah_plugin_installer_version'] : '';
+		
+		if($current == $version)
+			return;
+		
+		if(!$current)
+			@safe_query('DROP TABLE IF EXISTS '.safe_pfx('rah_plugin_installer'));
+		
+		/*
+			Stores plugin's version and update details.
+			
+			* name: Plugin's name. Primary key.
+			* author: Author's name.
+			* author_uri: Author's website address.
+			* version: Plugin's latest version number.
+			* description: Plugin's description.
+			* help: Cached help file.
+			* type: Plugin's type.
+			* md5_checksum: MD5 checksum for installer file.
+		*/
+		
+		safe_query(
+			"CREATE TABLE IF NOT EXISTS ".safe_pfx('rah_plugin_installer_def')." (
+				`name` varchar(64) NOT NULL default '',
+				`author` varchar(128) NOT NULL default '',
+				`author_uri` varchar(128) NOT NULL default '',
+				`version` varchar(10) NOT NULL default '1.0',
+				`description` text NOT NULL,
+				`help` text NOT NULL,
+				`type` int(2) NOT NULL default 0,
+				`md5_checksum` varchar(32) NOT NULL default '',
+				PRIMARY KEY(`name`)
+			) PACK_KEYS=1 CHARSET=utf8"
+		);
+		
+		/*
+			Add preferences strings
+		*/
+		
+		foreach(
+			array(
+				'version' => $version,
+				'updated' => 0,
+				'checksum' => ''
+			) as $name => $value
+		) {
+			if(!isset($prefs['rah_plugin_installer_'.$name]) || $name == 'version') {
+				set_pref('rah_plugin_installer_'.$name,$value,'rah_pins',2,'',0);
+				$prefs['rah_plugin_installer_'.$name] = $value;
+			}
+		}
+	}
+
+/**
+	Delivers the panes
+*/
 
 	function rah_plugin_installer() {
 		require_privs('rah_plugin_installer');
-		global $step;
+		require_privs('plugin');
+		
 		rah_plugin_installer_install();
-		if(in_array($step,array(
-			'rah_plugin_installer_download',
-			'rah_plugin_installer_settings',
-			'rah_plugin_installer_save',
-			'rah_plugin_installer_update',
-		))) $step();
-		else rah_plugin_installer_list();
-	}
-
-	function rah_plugin_installer_settings($message='') {
 		
-		pagetop('Settings',$message);
-		
-		global $event;
-		
-		$prefs = rah_plugin_installer_prefs();
-		
-		echo 
-			n.
-			'	<form method="post" action="index.php" style="width:950px;margin:0 auto;">'.n.
-			
-			'		<h1><strong>rah_plugin_installer</strong> | Preferences</h1>'.n.
-			
-			'		<p>&#187; <a href="?event='.$event.'">Back to the main panel</a></p>'.n.
-			
-			'		<input type="hidden" name="event" value="'.$event.'" />'.n.
-			'		<input type="hidden" name="step" value="rah_plugin_installer_save" />'.n.
-			
-			'		<p>'.
-			'			<label for="rah_plugin_installer_compress">'.n.
-			'				<strong>Download uncompressed or compressed files.</strong> '.
-							'This setting defines which packages you are downloading and installing when updating or installing. '.
-							'While uncompressed version requires more bandwidth and might overcome your server\'s memory restrictions, '.
-							'compressed version requires that the server uncompresses the file and has zlib installed. You don\'t need to worry about this setting '.
-							'if everything works fine.'.n.
-			'			</label>'.n.
-			'		</p>'.n.
-			'		<p>'.n.
-			'			<select style="width:650px;" id="rah_plugin_installer_compress" name="compress">'.n.
-			'				<option value="0"'.(($prefs['compress'] == 0) ? ' selected="selected"' : '').'>Download and install normal uncompressed versions</option>'.n.
-			'				<option value="1"'.(($prefs['compress'] == 1) ? ' selected="selected"' : '').'>Download and install compressed versions</option>'.n.
-			'			</select>'.n.
-			'		</p>'.n.
-			
-			'		<p>'.n.
-			'			<label for="rah_plugin_installer_autoupdates">'.n.
-			'				<strong>Auto-updater.</strong> Toggle auto-updates on or off. If auto-updates are off, you can still check updates manually with the <em>"Check updates now"</em> feature.'.n.
-			'			</label>'.n.
-			'		</p>'.n.
-			'		<p>'.n.
-			'			<select style="width:650px;" id="rah_plugin_installer_autoupdates" name="autoupdates">'.n.
-			'				<option value="1"'.(($prefs['autoupdates'] == 1) ? ' selected="selected"' : '').'>Check for updates automatically time to time</option>'.n.
-			'				<option value="0"'.(($prefs['autoupdates'] == 0) ? ' selected="selected"' : '').'>Turn auto-updater off, only check updates manually</option>'.n.
-			'			</select>'.n.
-			
-			'		</p>'.n.
-			'		<input type="submit" value="Save" class="publish" />'.n.
-			'	</form>'.n;
-		;
-		
-	}
-
-	function rah_plugin_installer_save() {
-		
-		$prefs = array(
-			'autoupdates',
-			'compress'
-		);
-		
-		foreach($prefs as $val) {
-			safe_update(
-				'rah_plugin_installer',
-				"code='".doSlash(ps($val))."'",
-				"name='".doSlash($val)."'"
-			);
-		}
-		
-		rah_plugin_installer_settings('Preferences saved.');
-	}
-
-	function rah_plugin_installer_check_updates($prefs) {
 		global $step;
 		
-		if(
-			(empty($prefs['updated']) or (strtotime($prefs['updated'].' '.$prefs['time_interval']) < strtotime('now'))) && 
-			($prefs['autoupdates'] == 1 or $step == 'rah_plugin_installer_update')
-		) {
-
-			$context = 
-				stream_context_create(array(
-					'http' => array('timeout' => $prefs['timeout'])
-				));
-
-			@$content = 
-				file_get_contents($prefs['update_file'],0,$context);
-			
-			if(empty($content)) 
-				return 1;
-			
-			else {
-				$content = base64_decode($content);
-				
-				if($content != $prefs['content']) {
-					$up1 = 
-						safe_update(
-							'rah_plugin_installer',
-							"code='".doSlash($content)."'",
-							"name='content'"
-						);
-				}
-				
-				$now = doSlash(safe_strftime('%Y-%m-%d %H:%M:%S'));
-				
-				$up2 = 
-					safe_update(
-						'rah_plugin_installer',
-						"code='$now'",
-						"name='updated'"
-					);
-				
-				if((isset($up1) && $up1 == false) or $up2 == false) 
-					return 2;
-				if($content != $prefs['content']) 
-					return 3;
-				else 
-					return 4;
-				
-			}
-		}
-		return;
+		$steps = 
+			array(
+				'download' => true,
+				'update' => true,
+			);
+		
+		if(!$step || !bouncer($step, $steps))
+			$step = 'list';
+		
+		$func = 'rah_plugin_installer_' . $step;
+		$func();
 	}
 
-	function rah_plugin_installer_list($message='') {
+/**
+	The main pane; the plugin listing
+	@param $message string Activity message.
+	@param $check bool Check for updates.
+*/
+
+	function rah_plugin_installer_list($message='',$check=false) {
+		
 		global $event;
 		
 		pagetop('Plugin Installer',$message);
 		
-		$prefs = rah_plugin_installer_prefs();
+		if(($updates = rah_plugin_installer_check($check)) && $updates)
+			$updates = gTxt('rah_plugin_installer_' . $updates);
 		
-		/*
-			Check for new content/updates
-		*/
-		
-		$msgs = 
-			array(
-				'Checking updates... Error: Can\'t fetch the updates from the server. Check your server\'s connections and/or that your host allows outgoing connections, and that allow_url_fopen is set to true.',
-				'Updates checked. Error while writing updates to your database.',
-				'Updates checked and found.',
-				'Updates checked. No new updates found.'
-			);
-		
-		$msg = rah_plugin_installer_check_updates($prefs);
-		
-		if(!empty($msg))
-			$prefs['content'] = 
-				fetch(
-					'code',
-					'rah_plugin_installer',
-					'name',
-					'content'
-				);
-		
-		$table = 
-			rah_plugin_installer_table(
-				$prefs
-			);
-		
-		echo 
-			
-			'	<div style="width:950px;margin:0 auto;">'.n.
-			'		<h1><strong>rah_plugin_installer</strong> | Install plugins</h1>'.n.
-			
-			'		<p>'.
-						' &#187; <a href="?event='.$event.'&amp;step=rah_plugin_installer_update">Check for updates</a> '.
-						' &#187; <a href="?event='.$event.'&amp;step=rah_plugin_installer_settings">Preferences</a> '.
-						' &#187; <a href="?event=plugin&amp;step=plugin_help&amp;name=rah_plugin_installer">Documentation</a> '.
-			'		</p>'.
-			
-			(($msg) ? '		<p id="warning">'.$msgs[$msg-1].'</p>' : '').
-			
-			'		<table cellspacing="0" cellpadding="0" class="list" id="list" style="width:100%;">'.n.
-			'			<tr>'.n.
-			'				<th>'.gTxt('name').'</th>'.n.
-			'				<th>'.gTxt('version').'</th>'.n.
-			'				<th>'.gTxt('description').'</th>'.n.
-			'				<th>Installed</th>'.n.
-			'				<th>&#160;</th>'.n.
-			'			</tr>'.n;
-		
-		if($table)
-			echo $table;
-		else 
-			echo 
-			'			<tr>'.n.
-			'				<td colspan="5">No plugins found.</td>'.n.
-			'			</tr>'.n;
-		
-		echo 
-			
-			'		</table>'.n.
-			
-			'	</div>'.n;
-			
-			
-	}
-
-	function rah_plugin_installer_update() {
-		
-		$prefs = rah_plugin_installer_prefs();
-		
-		if(
-			!empty($prefs['updated']) && (strtotime($prefs['updated'].' '.$prefs['mupd_interval']) < strtotime('now'))
-		) 
-			safe_update(
-				"rah_plugin_installer",
-				"code=''",
-				"name='updated'"
-			);
-		
-		rah_plugin_installer_list();
-	}
-
-	function rah_plugin_installer_install() {
-		safe_query(
-			"CREATE TABLE IF NOT EXISTS ".safe_pfx('rah_plugin_installer')." (
-				`name` VARCHAR(255) NOT NULL,
-				`code` LONGTEXT NOT NULL,
-			PRIMARY KEY(`name`))"
-		);
-		
-		rah_plugin_installer_prefs_insert(
-			array(
-				'site' => 'http://rahforum.biz/',
-				'update_file' => 'http://rahforum.biz/?rah_plugin_installer=1',
-				'download_uri' => 'http://rahforum.biz/?rah_plugin_download=[NAME]',
-				'download_zip' => 'http://rahforum.biz/?rah_plugin_download=[NAME]&rah_type=zip',
-				'download_timeout' => '10',
-				'info_uri' => 'http://rahforum.biz/plugins/[NAME]',
-				'time_interval' => '+14 days',
-				'mupd_interval' => '+30 minutes',
-				'timeout' => '3',
-				'updated' => '',
-				'content' => '',
-				'compress' => '0',
-				'autoupdates' => '1'
-			)
-		);
-	}
-
-	function rah_plugin_installer_prefs() {
-		
-		$out = array();
+		$installed = rah_plugin_installer_installed();
 		
 		$rs = 
 			safe_rows(
-				'name,code',
-				'rah_plugin_installer',
+				'name, version, description',
+				'rah_plugin_installer_def',
 				'1=1'
 			);
 		
-		foreach($rs as $a) 
-			$out[$a['name']] = $a['code'];
+		$out[] =
+		
+			'	<div id="rah_plugin_installer_container" class="rah_ui_container">'.n.
+			
+			'		<p class="rah_ui_nav">'.
+						'<span class="rah_ui_sep">&#187;</span> '.
+						'<a id="rah_plugin_installer_update" href="?event='.$event.'&amp;step=update&amp;_txp_token='.form_token().'">'.
+							gTxt('rah_plugin_installer_check_for_updates').
+						'</a>'.
+			'		</p>'.
+			
+			($updates && $rs ? '		<p id="warning">'.$updates.'</p>' : '').
+			
+			'		<table cellspacing="0" cellpadding="0" id="list">'.n.
+			'			<thead>'.n.
+			'				<tr>'.n.
+			'					<th>'.gTxt('rah_plugin_installer_name').'</th>'.n.
+			'					<th>'.gTxt('rah_plugin_installer_version').'</th>'.n.
+			'					<th>'.gTxt('rah_plugin_installer_description').'</th>'.n.
+			'					<th>'.gTxt('rah_plugin_installer_installed_version').'</th>'.n.
+			'					<th>&#160;</th>'.n.
+			'				</tr>'.n.
+			'			</thead>'.n.
+			'			<tbody>'.n;
+		
+		if($rs) {
+			foreach($rs as $a) {
+
+				$action = 'install';
+				$ins = '&#160;';
+			 	
+			 	if(isset($installed[$a['name']])) {
+			 		$ins = $installed[ $a['name']];
+			 		$action = $ins == $a['version'] ? '&#160;' : 'update';
+			 	}
+			
+				$out[] = 
+					'				<tr>'.n.
+					'					<td>'.htmlspecialchars($a['name']).'</td>'.n.
+					'					<td>'.htmlspecialchars($a['version']).'</td>'.n.
+					'					<td>'.htmlspecialchars($a['description']).'</td>'.n.
+					'					<td>'.$ins.'</td>'.n.
+					'					<td><a href="?event='.$event.'&amp;step=download&amp;name='.$a['name'].'&amp;_txp_token='.form_token().'">'.gTxt('rah_plugin_installer_'.$action).'</a></td>'.n.
+					'				</tr>'.n;
+				}
+		} else
+			$out[] =
+				'			<tr>'.n.
+				'				<td colspan="5">'.($updates ? $updates : gTxt('rah_plugin_installer_no_plugins')).'</td>'.n.
+				'			</tr>'.n;
+		
+		$out[] = 
+			
+			'			</tbody>'.n.
+			'		</table>'.n.
+			'	</div>'.n;
+			
+		echo implode('', $out);
+	}
+
+/**
+	Get list of installed plugins
+*/
+
+	function rah_plugin_installer_installed() {
+
+		static $cache = NULL;
+		
+		if($cache !== NULL) {
+			return $cache;
+		}
+		
+		$cache = array();
+			
+		$rs = 
+			safe_rows(
+				'name, version',
+				'txp_plugin',
+				'1=1'
+			);
+			
+		foreach($rs as $a)
+			$cache[$a['name']] = $a['version'];
+		
+		return $cache;
+	}
+
+/**
+	Checks for updates
+	@param $manual bool If user-launched update check, or auto.
+	@return string Returned message as a language string.
+*/
+
+	function rah_plugin_installer_check($manual=false) {
+		
+		global $prefs;
+		
+		@$disabled = !ini_get('allow_url_fopen') && !function_exists('curl_init');
+		
+		if($disabled)
+			return 'open_ports_or_install_curl';
+		
+		$now = strtotime('now');
+		
+		$wait = !$manual ? 604800 : 1800;
+		
+		if($prefs['rah_plugin_installer_updated'] + $wait >= $now) {
+			return $manual ? 'already_up_to_date' : '';
+		}
+		
+		$def = rah_plugin_installer_fget('http://rahforum.biz/?rah_plugin_installer=1&rah_version=2' , $manual ? 30 : 5);
+		
+		/*
+			Update the last-update timestamp if we got payload
+		*/
+		
+		if($def) {
+			
+			safe_update(
+				'txp_prefs',
+				"val='$now'",
+				"name='rah_plugin_installer_updated'"
+			);
+		
+			$prefs['rah_plugin_installer_updated'] = $now;
+		}
+		
+		if(!$def || !preg_match('!^[a-zA-Z0-9/+]*={0,2}$!',$def)) {
+			return 'could_not_fetch';
+		}
+		
+		$def = base64_decode($def);
+		$md5 = md5($def);
+		
+		if($md5 == $prefs['rah_plugin_installer_checksum'])
+			return 'already_up_to_date';
+		
+		safe_update(
+			'txp_prefs',
+			"val='$md5'",
+			"name='rah_plugin_installer_checksum'"
+		);
+		
+		rah_plugin_installer_import(rah_plugin_installer_parser($def));
+		
+		return 'definition_updates_checked';
+	}
+
+/**
+	Fire manual listing refresh
+*/
+
+	function rah_plugin_installer_update() {
+		rah_plugin_installer_list('',true);
+	}
+
+/**
+	Parses update file
+	@param $file string File to parse.
+	@return array
+*/
+
+	function rah_plugin_installer_parser($file) {
+
+		$file = explode(n, $file);
+		$plugin = '';
+		$out = array();
+
+		foreach($file as $line) {
+			
+			$line = trim($line);
+			
+			if(!$line || strpos($line,'#') === 0)
+				continue;
+
+			/*
+				Set the plugin name
+			*/
+			
+			if(strpos($line,'@') === 0 && strpos($line,'_') == 4) {
+				$plugin = substr($line, 1);
+				continue;
+			}
+			
+			if(!$plugin)
+				continue;
+			
+			if(!preg_match('/^(\w+)\s*=>\s*(.+)$/', $line, $m))
+				continue;
+				
+			if(empty($m[1]) || empty($m[2]))
+				continue;
+					
+			$out[$plugin][$m[1]] = $m[2];
+		}
 		
 		return $out;
-		
 	}
+	
+/**
+	Imports update file to the database
+	@param $inc array Definitions to import.
+	@return Nothing.
+*/
 
-	function rah_plugin_installer_prefs_insert($array) {
+	function rah_plugin_installer_import($inc) {
 		
-		foreach($array as $key => $val) {
-			
-			if(
-				safe_count(
-					'rah_plugin_installer',
-					"name='".doSlash($key)."'"
-				) == 0
-			)
-				safe_insert(
-					'rah_plugin_installer',
-					"name='".doSlash($key)."',code='".doSlash($val)."'"
-				);
-			
-		}
-	}
-
-	function rah_plugin_installer_table($prefs,$installing='') {
-		
-		if(empty($prefs['content']))
-			return '';
-		
-		$rows = explode('[row]',$prefs['content']);
+		$plugin = array();
 		
 		$rs = 
 			safe_rows(
-				'version,name',
-				'txp_plugin',
+				'name, version',
+				'rah_plugin_installer_def',
 				'1=1'
 			);
 		
 		foreach($rs as $a)
 			$plugin[$a['name']] = $a['version'];
 		
-		$out = array();
-		
-		foreach($rows as $row) {
+		foreach($inc as $name => $a) {
 			
-			$field = explode('|',$row);
-			
-			if(!isset($field[2]))
+			if(!isset($a['description']) || !isset($a['version']))
 				continue;
 			
-			$name = trim($field[0]);
-			$version = trim($field[2]);
-			$description = trim($field[1]);
+			if(!isset($plugin[$name])) {
+				
+				safe_insert(
+					'rah_plugin_installer_def',
+					"name='".doSlash($name)."',
+					version='".doSlash($a['version'])."',
+					description='".doSlash($a['description'])."'"
+				);
+					
+			}
+			else if($plugin[$name] != $a['version']) {
 			
-			if(empty($name) or empty($version) or empty($description))
-				continue;
-			
-			$installed = isset($plugin[$name]) ? (($plugin[$name]) ? $plugin[$name] : '0.1') : '';
-			
-			if(!empty($installing) && $name == $installing && $installed != $version) {
-				return true;
+				safe_update(
+					'rah_plugin_installer_def',
+					"version='".doSlash($a['version'])."',
+					description='".doSlash($a['description'])."'",
+					"name='".doSlash($name)."'"
+				);
+				
 			}
 			
-			if(!empty($installing))
-				continue;
-			
-			$name = htmlspecialchars($name);
-			
-			if($installed) 
-				$form = ($installed != $version) ? rah_plugin_installer_link(gTxt('update'),$name) : '&#160;';
-			else 
-				$form = rah_plugin_installer_link(gTxt('install'),$name);
-			
-			
-			$url = 
-				str_replace(
-					'[NAME]',
-					$name,
-					$prefs['info_uri']
-				);
-		
-			$out[] = 
-				'	<tr>'.n.
-				'		<td><a target="_blank" href="'.$url.'">'.$name.'</a></td>'.n.
-				'		<td>'.htmlspecialchars($version).'</td>'.n.
-				'		<td>'.htmlspecialchars($description).'</td>'.n.
-				'		<td>'.(($installed) ? $installed : '&#160;').'</td>'.n.
-				'		<td>'.$form.'</td>'.n.
-				'	</tr>'.n;
+			unset($plugin[$name]);
 		}
 		
-		return implode('',$out);
-
+		if(!empty($plugin) && is_array($plugin)) {
+			
+			foreach($plugin as $name => $version)
+				$remove[] = "'".doSlash($name)."'";
+				
+			safe_delete(
+				'rah_plugin_installer_def',
+				'name in('. implode(',', $remove) . ')'
+			);
+			
+		}
+		
 	}
 
-	function rah_plugin_installer_link($label='',$plugin='') {
-		global $event;
-		return 
-			'<a href="?event='.$event.'&amp;step=rah_plugin_installer_download&amp;plugin_name='.$plugin.'">'.$label.'</a>'
-		;
-	}
+/**
+	Download the plugin code and run Textpattern's plugin installer
+*/
 
 	function rah_plugin_installer_download() {
 		
-		$name = trim(gps('plugin_name'));
-		$prefs = rah_plugin_installer_prefs();
+		@$disabled = !ini_get('allow_url_fopen') && !function_exists('curl_init');
 		
-		if(empty($name)) {
-			rah_plugin_installer_list('Incorrect selection.');
-			return;
-		}
-
-		if(rah_plugin_installer_table($prefs,$name) != true) {
-			rah_plugin_installer_list('Already installed or false selection.');
+		if($disabled) {
+			rah_plugin_installer_list('open_ports_or_install_curl');
 			return;
 		}
 		
-		if($prefs['compress'] == 1)
-			$uri = $prefs['download_zip'];
-		else 
-			$uri = $prefs['download_uri'];
-
-		$url = 
-			str_replace(
-				'[NAME]',
-				$name,
-				$uri
+		$name = gps('name');
+		
+		$def = 
+			safe_row(
+				'name, version',
+				'rah_plugin_installer_def',
+				"name='".doSlash($name)."' LIMIT 0, 1"
 			);
 		
-		$context = 
-			stream_context_create(array(
-				'http' => array('timeout' => $prefs['download_timeout'])
-			));
-
-		@$plugin = file_get_contents($url, 0, $context);
+		if(!$name || !$def) {
+			rah_plugin_installer_list('rah_plugin_installer_incorrect_selection');
+			return;
+		}
+		
+		if(fetch('version', 'txp_plugin', 'name', $name) == $def['version']) {
+			rah_plugin_installer_list('rah_plugin_installer_already_installed');
+			return;
+		}
+		
+		$url = 'http://rahforum.biz/?rah_plugin_download='.$name;
+		$url = function_exists('gzencode') ? $url . '&rah_type=zip' : $url;
+			
+		$plugin = rah_plugin_installer_fget($url);
 		
 		if(empty($plugin)) {
-			rah_plugin_installer_list('Downloading the plugin failed: unable to get the file.');
+			rah_plugin_installer_list('rah_plugin_installer_downloading_plugin_failed');
 			return;
 		}
 
@@ -424,10 +496,91 @@
 		$_POST['plugin64'] = $plugin;
 		$_POST['event'] = 'plugin';
 		$_POST['step'] = 'plugin_verify';
+		$_POST['_txp_token'] = form_token();
+		
 		$step = 'plugin_verify';
 		$event = 'plugin';
 		
 		include_once txpath.'/include/txp_plugin.php';
 		exit;
+	}
+
+/**
+	Downloads remote file
+	@param $url string URL to download.
+	@param $timeout int Connection timeout in seconds.
+	@return string Contents of the file. False on failure.
+*/
+
+	function rah_plugin_installer_fget($url, $timeout=10) {
+		
+		/*
+			If cURL isn't available,
+			use file_get_contents if possible
+		*/
+			
+		if(!function_exists('curl_init')) {
+			
+			if(!ini_get('allow_url_fopen'))
+				return false;
+			
+			$context = 
+				stream_context_create(
+					array(
+					'http' => 
+						array(
+							'timeout' => $timeout
+						)
+					)
+				);
+
+			@$file = file_get_contents($url, 0, $context);
+			return !$file ? false : trim($file);
+		}
+		
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_FAILONERROR, 1);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		$file = curl_exec($ch);
+		$http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		curl_close($ch);
+		
+		return $file !== false && $http == '200' ? trim($file) : false;
+	}
+
+/**
+	Redirect to the admin-side interface
+*/
+
+	function rah_plugin_installer_options() {
+		header('Location: ?event=rah_plugin_installer');
+		echo 
+			'<p>'.n.
+			'	<a href="?event=rah_plugin_installer">'.gTxt('continue').'</a>'.n.
+			'</p>';
+	}
+
+/**
+	Adds styles to the <head>
+*/
+
+	function rah_plugin_installer_head() {
+		global $event;
+		
+		if($event != 'rah_plugin_installer')
+			return;
+		
+		echo <<<EOF
+			<style type="text/css">
+				#rah_plugin_installer_container {
+					width: 950px;
+					margin: 0 auto;	
+				}
+				#rah_plugin_installer_container table {
+					width: 100%;	
+				}
+			</style>
+EOF;
 	}
 ?>
