@@ -41,7 +41,7 @@
 			
 			safe_delete(
 				'txp_prefs',
-				"name like 'rah_plugin_installer_%'"
+				"name like 'rah\_plugin\_installer\_%'"
 			);
 			
 			return;
