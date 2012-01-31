@@ -1,9 +1,9 @@
 h1. rah_plugin_installer
 
-p. Upload, install, update and manage rah-plugins directly from your Textpattern backend, with out any need of browsing complicated sites or searching scrattered plugin installation files.
+p. Install and update rah-plugins directly from your "Textpattern":http://www.textpattern.com installation. Click and install, ready to go.
 
-* Version: 0.1
-* Updated: 2008/08/31 10:00 AM GMT+2
+* Version: 0.2
+* Updated: 2010/06/01 02:30 AM UTC
 
 h3. Table of Contents
 
@@ -16,25 +16,35 @@ h3(#list-of-features). List of features
 
 * Simple install: just run the automatic plugin install. No need to upload any files nor set permissions.
 * Download and install rah-family plugin directly from your Textpattern backend.
-* Smart real server side caching mechanism.
-* Simple admin panel, _Plugin Installer_, under Textpattern > Extensions.
+* Server side caching of the update list.
+* Admin panel under Textpattern > Extensions > _Plugin Installer_.
 
 h3(#requirements). Requirements
 
-p. Minimum requirements:
-
-* Textpattern 4.0.4
-* PHP 4.3.0
+* Textpattern 4.x.x+
+* PHP 4.3.0+
 ** file_get_contents
 ** allow_url_fopen set true
-
-p. Recommended:
-
-* PHP 5.1.2+
-* Textpattern 4.0.6+
+** Internet connection for communications with the server
+* Optional: Zlib library.
 
 h3(#installation-and-usage). Installation and usage
 
 p. The general behavior stands: paste plugin code to the plugin installer textarea and run the automatic setup. Then just activate the plugin and you are ready to use the functionalities.
 
 p. You can download and install rah-plugins from Textpattern > Extensions > Plugin Installer.
+
+h3(#changelog). Changelog
+
+p. *Version 0.2*
+
+* Added more validity and error checks.
+* Added timeout support for update downloads. 3 seconds for update checks and 10 seconds for actual files.
+* Added option to turn automatic-updates off.
+* Cleaned the admin panel.
+* Fixed manual update check.
+* Fixed conflicts with other extension that included @txp_plugin.php@.
+
+p. *Version 0.1*
+
+* Initial release.
