@@ -14,13 +14,13 @@
  */
 
 	if(@txpinterface == 'admin') {
-		add_privs('rah_plugin_installer','1');
-		add_privs('plugin_prefs.rah_plugin_installer','1,2');
-		register_tab('extensions','rah_plugin_installer',gTxt('rah_plugin_installer') == 'rah_plugin_installer' ? 'Plugin Installer' : gTxt('rah_plugin_installer'));
-		register_callback('rah_plugin_installer_head','admin_side','head_end');
-		register_callback('rah_plugin_installer','rah_plugin_installer');
-		register_callback('rah_plugin_installer_options','plugin_prefs.rah_plugin_installer');
-		register_callback('rah_plugin_installer_install','plugin_lifecycle.rah_plugin_installer');
+		add_privs('rah_plugin_installer', '1');
+		add_privs('plugin_prefs.rah_plugin_installer', '1,2');
+		register_tab('extensions', 'rah_plugin_installer', gTxt('rah_plugin_installer'));
+		register_callback('rah_plugin_installer_head', 'admin_side', 'head_end');
+		register_callback('rah_plugin_installer', 'rah_plugin_installer');
+		register_callback('rah_plugin_installer_options', 'plugin_prefs.rah_plugin_installer');
+		register_callback('rah_plugin_installer_install', 'plugin_lifecycle.rah_plugin_installer');
 	}
 
 /**
@@ -30,6 +30,8 @@
  */
 
 	function rah_plugin_installer_install($event='', $step='') {
+		
+		global $prefs;
 		
 		if($step == 'deleted') {
 			
@@ -43,39 +45,6 @@
 			);
 			
 			return;
-		}
-		
-		global $prefs, $textarray;
-		
-		/*
-			Make sure language strings are set
-		*/
-		
-		foreach(
-			array(
-				'' => 'Plugin installer',
-				'check_for_updates' => 'Check for updates',
-				'name' => 'Name',
-				'version' => 'Version',
-				'description' => 'Description',
-				'installed_version' => 'Installed version',
-				'no_plugins' => 'No plugin update definitions downloaded yet.',
-				'already_up_to_date' => 'Plugin update definitions are up-to-date.',
-				'already_installed' => 'Plugin is already installed.',
-				'incorrect_selection' => 'Incorrect selection.',
-				'open_ports_or_install_curl' => 'Can not connect to server due to unsupported server configuration. Please either install cURL or set allow_url_fopen directive in PHP configuration file to true.',
-				'downloading_plugin_failed' => 'Downloading plugin failed',
-				'in_plugin_cache' => 'Initialized from plugin cache',
-				'update' => 'Update',
-				'download' => 'Download',
-				'install' => 'Install',
-				'definition_updates_checked' => 'New plugin update definitions downloaded successfully.'
-			) as $string => $translation
-		) {
-			$string = 'rah_plugin_installer' . ($string ? '_' . $string : '');
-			
-			if(!isset($textarray[$string]))
-				$textarray[$string] = $translation;
 		}
 				
 		$version = '0.4';
