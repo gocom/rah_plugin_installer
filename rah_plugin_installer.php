@@ -15,7 +15,7 @@
 
 	if(@txpinterface == 'admin') {
 		add_privs('rah_plugin_installer', '1');
-		add_privs('plugin_prefs.rah_plugin_installer', '1,2');
+		add_privs('plugin_prefs.rah_plugin_installer', '1');
 		register_tab('extensions', 'rah_plugin_installer', gTxt('rah_plugin_installer'));
 		register_callback('rah_plugin_installer_head', 'admin_side', 'head_end');
 		register_callback('rah_plugin_installer', 'rah_plugin_installer');
