@@ -185,7 +185,7 @@
 				$ins = '&#160;';
 			 	
 			 	if(isset($installed[$a['name']])) {
-			 		$ins = $installed[ $a['name']];
+			 		$ins = htmlspecialchars($installed[$a['name']]);
 			 		$action = $ins == $a['version'] ? '' : 'update';
 			 	}
 			
@@ -195,9 +195,9 @@
 					'					<td>'.htmlspecialchars($a['version']).'</td>'.n.
 					'					<td>'.htmlspecialchars($a['description']).'</td>'.n.
 					'					<td>'.$ins.'</td>'.n.
-					'					<td>'.($action ? '<a href="?event='.$event.'&amp;step=download&amp;name='.$a['name'].'&amp;_txp_token='.form_token().'">'.gTxt('rah_plugin_installer_'.$action).'</a>' : '&#160;').'</td>'.n.
+					'					<td>'.($action ? '<a href="?event='.$event.'&amp;step=download&amp;name='.htmlspecialchars($a['name']).'&amp;_txp_token='.form_token().'">'.gTxt('rah_plugin_installer_'.$action).'</a>' : '&#160;').'</td>'.n.
 					'				</tr>'.n;
-				}
+			}
 		} else
 			$out[] =
 				'			<tr>'.n.
@@ -402,18 +402,12 @@
 			unset($plugin[$name]);
 		}
 		
-		if(!empty($plugin) && is_array($plugin)) {
-			
-			foreach($plugin as $name => $version)
-				$remove[] = "'".doSlash($name)."'";
-				
+		if(!empty($plugin)) {
 			safe_delete(
 				'rah_plugin_installer_def',
-				'name in('. implode(',', $remove) . ')'
+				'name in('.implode(',', quote_list(array_keys($plugin))).')'
 			);
-			
 		}
-		
 	}
 
 /**
