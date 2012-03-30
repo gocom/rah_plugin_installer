@@ -17,19 +17,23 @@
 		add_privs('rah_plugin_installer', '1');
 		add_privs('plugin_prefs.rah_plugin_installer', '1');
 		register_tab('extensions', 'rah_plugin_installer', gTxt('rah_plugin_installer'));
-		register_callback('rah_plugin_installer_head', 'admin_side', 'head_end');
-		register_callback('rah_plugin_installer', 'rah_plugin_installer');
-		register_callback('rah_plugin_installer_options', 'plugin_prefs.rah_plugin_installer');
-		register_callback('rah_plugin_installer_install', 'plugin_lifecycle.rah_plugin_installer');
+		register_callback(array('rah_plugin_installer', 'head'), 'admin_side', 'head_end');
+		register_callback(array('rah_plugin_installer', 'panes'), 'rah_plugin_installer');
+		register_callback(array('rah_plugin_installer', 'prefs'), 'plugin_prefs.rah_plugin_installer');
+		register_callback(array('rah_plugin_installer', 'install'), 'plugin_lifecycle.rah_plugin_installer');
 	}
 
-/**
- * Installer script
- * @param string $event Admin-side event.
- * @param string $step Admin-side, plugin-lifecycle step.
- */
+class rah_plugin_installer {
+	
+	static public $version = '0.4';
 
-	function rah_plugin_installer_install($event='', $step='') {
+	/**
+	 * Installs
+	 * @param string $event Admin-side event.
+	 * @param string $step Admin-side, plugin-lifecycle step.
+	 */
+
+	static public function install($event='', $step='') {
 		
 		global $prefs;
 		
@@ -46,14 +50,11 @@
 			
 			return;
 		}
-				
-		$version = '0.4';
 		
-		$current = 
-			isset($prefs['rah_plugin_installer_version']) ?
+		$current = isset($prefs['rah_plugin_installer_version']) ?
 			$prefs['rah_plugin_installer_version'] : '';
 		
-		if($current == $version)
+		if($current == self::$version)
 			return;
 		
 		if(!$current)
@@ -92,7 +93,7 @@
 		
 		foreach(
 			array(
-				'version' => $version,
+				'version' => self::$version,
 				'updated' => 0,
 				'checksum' => ''
 			) as $name => $value
@@ -104,47 +105,54 @@
 		}
 	}
 
-/**
- * Delivers the panes
- */
+	/**
+	 * Delivers the panes
+	 */
 
-	function rah_plugin_installer() {
+	static public function panes() {
+		global $step;
+		
 		require_privs('rah_plugin_installer');
 		require_privs('plugin');
 		
-		rah_plugin_installer_install();
-		
-		global $step;
-		
 		$steps = 
 			array(
+				'view' => false,
 				'download' => true,
 				'update' => true,
 			);
 		
 		if(!$step || !bouncer($step, $steps))
-			$step = 'list';
+			$step = 'view';
 		
-		$func = 'rah_plugin_installer_' . $step;
-		$func();
+		$pane = new rah_plugin_installer();
+		$pane->$step();
+	}
+	
+	/**
+	 * Constructor
+	 */
+	
+	public function __construct() {
+		self::install();
 	}
 
-/**
- * The main pane; the plugin listing
- * @param string $message Activity message.
- * @param bool $check Check for updates.
- */
+	/**
+	 * Lists all plugins
+	 * @param string $message Activity message.
+	 * @param bool $check Check for updates.
+	 */
 
-	function rah_plugin_installer_list($message='', $check=false) {
+	public function view($message='', $check=false) {
 		
 		global $event;
 		
-		pagetop('Plugin Installer',$message);
+		pagetop(gTxt('rah_plugin_installer'), $message);
 		
-		if(($updates = rah_plugin_installer_check($check)) && $updates)
+		if(($updates = $this->check_updates($check)) && $updates)
 			$updates = gTxt('rah_plugin_installer_' . $updates);
 		
-		$installed = rah_plugin_installer_installed();
+		$installed = $this->get_installed();
 		
 		$rs = 
 			safe_rows(
@@ -213,12 +221,12 @@
 		echo implode('', $out);
 	}
 
-/**
- * Get list of installed plugins
- * @return array
- */
+	/**
+	 * Get list of installed plugins
+	 * @return array
+	 */
 
-	function rah_plugin_installer_installed() {
+	private function get_installed() {
 
 		static $cache = NULL;
 		
@@ -241,13 +249,13 @@
 		return $cache;
 	}
 
-/**
- * Checks for updates
- * @param bool $manual If user-launched update check, or auto.
- * @return string Returned message as a language string.
- */
+	/**
+	 * Checks for updates
+	 * @param bool $manual If user-launched update check, or auto.
+	 * @return string Returned message as a language string.
+	 */
 
-	function rah_plugin_installer_check($manual=false) {
+	private function check_updates($manual=false) {
 		
 		global $prefs;
 		
@@ -264,7 +272,7 @@
 			return $manual ? 'already_up_to_date' : '';
 		}
 		
-		$def = rah_plugin_installer_fget('http://rahforum.biz/?rah_plugin_installer=1&rah_version=2' , $manual ? 30 : 5);
+		$def = $this->get_plugin('http://rahforum.biz/?rah_plugin_installer=1&rah_version=2' , $manual ? 30 : 5);
 		
 		/*
 			Update the last-update timestamp if we got payload
@@ -297,26 +305,26 @@
 			"name='rah_plugin_installer_checksum'"
 		);
 		
-		rah_plugin_installer_import(rah_plugin_installer_parser($def));
+		$this->import($this->parse($def));
 		
 		return 'definition_updates_checked';
 	}
 
-/**
- * Fire manual listing refresh
- */
+	/**
+	 * Fire manual listing refresh
+	 */
 
-	function rah_plugin_installer_update() {
-		rah_plugin_installer_list('',true);
+	public function update() {
+		$this->view('', true);
 	}
 
-/**
- * Parses update file
- * @param string $file File to parse.
- * @return array
- */
+	/**
+	 * Parses update file
+	 * @param string $file File to parse.
+	 * @return array
+	 */
 
-	function rah_plugin_installer_parser($file) {
+	private function parse($file) {
 
 		$file = explode(n, $file);
 		$plugin = '';
@@ -353,13 +361,13 @@
 		return $out;
 	}
 	
-/**
- * Imports update file to the database
- * @param array $inc Definitions to import.
- * @return Nothing.
- */
+	/**
+	 * Imports update file to the database
+	 * @param array $inc Definitions to import.
+	 * @return Nothing.
+	 */
 
-	function rah_plugin_installer_import($inc) {
+	private function import($inc) {
 		
 		$plugin = array();
 		
@@ -410,16 +418,16 @@
 		}
 	}
 
-/**
- * Download the plugin code and run Textpattern's plugin installer
- */
+	/**
+	 * Download the plugin code and run Textpattern's plugin installer
+	 */
 
-	function rah_plugin_installer_download() {
+	public function download() {
 		
 		@$disabled = !ini_get('allow_url_fopen') && !function_exists('curl_init');
 		
 		if($disabled) {
-			rah_plugin_installer_list('open_ports_or_install_curl');
+			$this->view('open_ports_or_install_curl');
 			return;
 		}
 		
@@ -433,22 +441,22 @@
 			);
 		
 		if(!$name || !$def) {
-			rah_plugin_installer_list('rah_plugin_installer_incorrect_selection');
+			$this->view('rah_plugin_installer_incorrect_selection');
 			return;
 		}
 		
 		if(fetch('version', 'txp_plugin', 'name', $name) == $def['version']) {
-			rah_plugin_installer_list('rah_plugin_installer_already_installed');
+			$this->view('rah_plugin_installer_already_installed');
 			return;
 		}
 		
 		$url = 'http://rahforum.biz/?rah_plugin_download='.$name;
 		$url = function_exists('gzencode') ? $url . '&rah_type=zip' : $url;
 			
-		$plugin = rah_plugin_installer_fget($url);
+		$plugin = $this->get_plugin($url);
 		
 		if(empty($plugin)) {
-			rah_plugin_installer_list('rah_plugin_installer_downloading_plugin_failed');
+			$this->view('rah_plugin_installer_downloading_plugin_failed');
 			return;
 		}
 
@@ -466,14 +474,14 @@
 		exit;
 	}
 
-/**
- * Downloads remote file
- * @param string $url URL to download.
- * @param int $timeout Connection timeout in seconds.
- * @return string Contents of the file. False on failure.
- */
+	/**
+	 * Downloads remote file
+	 * @param string $url URL to download.
+	 * @param int $timeout Connection timeout in seconds.
+	 * @return string Contents of the file. False on failure.
+	 */
 
-	function rah_plugin_installer_fget($url, $timeout=10) {
+	private function get_plugin($url, $timeout=10) {
 		
 		@set_time_limit(0);
 		@ignore_user_abort(true);
@@ -518,11 +526,11 @@
 		return $file !== false && $http == '200' ? trim($file) : false;
 	}
 
-/**
- * Redirect to the admin-side interface
- */
+	/**
+	 * Redirect to the admin-side interface
+	 */
 
-	function rah_plugin_installer_options() {
+	static public function prefs() {
 		header('Location: ?event=rah_plugin_installer');
 		echo 
 			'<p>'.n.
@@ -530,11 +538,11 @@
 			'</p>';
 	}
 
-/**
- * Adds styles to the <head>
- */
+	/**
+	 * Adds styles to the <head>
+	 */
 
-	function rah_plugin_installer_head() {
+	static public function head() {
 		global $event;
 		
 		if($event != 'rah_plugin_installer')
@@ -552,4 +560,6 @@
 			</style>
 EOF;
 	}
+}
+
 ?>

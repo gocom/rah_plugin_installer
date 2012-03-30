@@ -14,7 +14,7 @@ h2. Requirements
 Rah_plugin_installer's minimum requirement:
 
 * Textpattern 4.4.1 or newer.
-* PHP 4.3.0 or newer.
+* PHP 5 or newer.
 ** "cURL":http://php.net/manual/en/book.curl.php library or "allow_url_fopen":http://php.net/manual/en/filesystem.configuration.php set true
 ** Internet connection for communications with the server
 * Optional: Zlib library.
