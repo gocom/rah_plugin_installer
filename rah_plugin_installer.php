@@ -24,8 +24,14 @@
 	}
 
 class rah_plugin_installer {
-	
+
 	static public $version = '0.4';
+
+	public $message = array();
+	
+	private $cache_duration = 64800;
+	private $timestamp;
+	private $installed = array();
 
 	/**
 	 * Installs
@@ -106,6 +112,35 @@ class rah_plugin_installer {
 	}
 
 	/**
+	 * Constructor
+	 */
+	
+	public function __construct() {
+		
+		self::install();
+		
+		$this->timestamp = @safe_strtotime('now');
+		
+		if(function_exists('curl_init') && !@ini_get('allow_url_fopen')) {
+			$this->message[] = 'open_ports_or_install_curl';
+		}
+		
+		if(($updates = $this->check_updates()) && $updates) {
+			$this->message[] = $updates;
+		}
+		
+		foreach(
+			safe_rows(
+				'name, version',
+				'txp_plugin',
+				'1=1'
+			) as $a
+		) {
+			$this->installed[$a['name']] = $a['version'];
+		}
+	}
+
+	/**
 	 * Delivers the panes
 	 */
 
@@ -122,37 +157,26 @@ class rah_plugin_installer {
 				'update' => true,
 			);
 		
-		if(!$step || !bouncer($step, $steps))
+		$pane = new rah_plugin_installer();
+		
+		if($pane->message || !$step || !bouncer($step, $steps))
 			$step = 'view';
 		
-		$pane = new rah_plugin_installer();
 		$pane->$step();
-	}
-	
-	/**
-	 * Constructor
-	 */
-	
-	public function __construct() {
-		self::install();
 	}
 
 	/**
 	 * Lists all plugins
 	 * @param string $message Activity message.
-	 * @param bool $check Check for updates.
 	 */
 
-	public function view($message='', $check=false) {
+	public function view($message='') {
 		
 		global $event;
 		
 		pagetop(gTxt('rah_plugin_installer'), $message);
 		
-		if(($updates = $this->check_updates($check)) && $updates)
-			$updates = gTxt('rah_plugin_installer_' . $updates);
-		
-		$installed = $this->get_installed();
+		$installed = $this->installed;
 		
 		$rs = 
 			safe_rows(
@@ -172,7 +196,7 @@ class rah_plugin_installer {
 						'</a>'.
 			'		</p>'.
 			
-			($updates && $rs ? '		<p id="warning">'.$updates.'</p>' : '').
+			($this->message ? '		<p id="warning">'.$this->message[0].'</p>' : '').
 			
 			'		<table cellspacing="0" cellpadding="0" id="list">'.n.
 			'			<thead>'.n.
@@ -222,34 +246,6 @@ class rah_plugin_installer {
 	}
 
 	/**
-	 * Get list of installed plugins
-	 * @return array
-	 */
-
-	private function get_installed() {
-
-		static $cache = NULL;
-		
-		if($cache !== NULL) {
-			return $cache;
-		}
-		
-		$cache = array();
-			
-		$rs = 
-			safe_rows(
-				'name, version',
-				'txp_plugin',
-				'1=1'
-			);
-			
-		foreach($rs as $a)
-			$cache[$a['name']] = $a['version'];
-		
-		return $cache;
-	}
-
-	/**
 	 * Checks for updates
 	 * @param bool $manual If user-launched update check, or auto.
 	 * @return string Returned message as a language string.
@@ -258,11 +254,6 @@ class rah_plugin_installer {
 	private function check_updates($manual=false) {
 		
 		global $prefs;
-		
-		@$disabled = !ini_get('allow_url_fopen') && !function_exists('curl_init');
-		
-		if($disabled)
-			return 'open_ports_or_install_curl';
 		
 		$now = strtotime('now');
 		
@@ -423,13 +414,6 @@ class rah_plugin_installer {
 	 */
 
 	public function download() {
-		
-		@$disabled = !ini_get('allow_url_fopen') && !function_exists('curl_init');
-		
-		if($disabled) {
-			$this->view('open_ports_or_install_curl');
-			return;
-		}
 		
 		$name = gps('name');
 		
