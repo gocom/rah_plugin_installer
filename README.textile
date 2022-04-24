@@ -1,5 +1,7 @@
 h1. rah_plugin_installer
 
+*This has been superseded by Composer dependency manager and "textpattern/installer":https://github.com/gocom/textpattern-installer.*
+
 p. Install and update rah-plugins directly from your "Textpattern":http://www.textpattern.com installation. Click and install, ready to go.
 
 h2. List of features
